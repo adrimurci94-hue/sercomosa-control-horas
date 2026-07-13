@@ -56,6 +56,7 @@ export async function cargarEmpleadosCompletos() {
     id: e.id,
     sap: e.sap,
     numSercomosa: e.num_sercomosa || "",
+    nif: e.nif || "",
     nombre: e.nombre,
     convenio: e.convenio,
     tramos: (tramosPorEmpleado[e.id] || []).sort((a, b) => a.inicio.localeCompare(b.inicio)),
@@ -63,14 +64,23 @@ export async function cargarEmpleadosCompletos() {
   }));
 }
 
-export async function crearEmpleado({ sap, numSercomosa, nombre, convenio }) {
+export async function crearEmpleado({ sap, numSercomosa, nif, nombre, convenio }) {
   const { data, error } = await supabase
     .from("empleados")
-    .insert({ sap, num_sercomosa: numSercomosa || null, nombre, convenio })
+    .insert({ sap, num_sercomosa: numSercomosa || null, nif: nif || null, nombre, convenio })
     .select()
     .single();
   if (error) throw error;
-  return { id: data.id, sap: data.sap, numSercomosa: data.num_sercomosa || "", nombre: data.nombre, convenio: data.convenio, tramos: [], registros: [] };
+  return {
+    id: data.id,
+    sap: data.sap,
+    numSercomosa: data.num_sercomosa || "",
+    nif: data.nif || "",
+    nombre: data.nombre,
+    convenio: data.convenio,
+    tramos: [],
+    registros: [],
+  };
 }
 
 export async function eliminarEmpleado(empleadoId) {
@@ -83,6 +93,7 @@ export async function actualizarEmpleado(empleadoId, campos) {
   if (campos.nombre !== undefined) payload.nombre = campos.nombre;
   if (campos.convenio !== undefined) payload.convenio = campos.convenio;
   if (campos.numSercomosa !== undefined) payload.num_sercomosa = campos.numSercomosa || null;
+  if (campos.nif !== undefined) payload.nif = campos.nif || null;
   const { error } = await supabase.from("empleados").update(payload).eq("id", empleadoId);
   if (error) throw error;
 }

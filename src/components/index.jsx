@@ -172,9 +172,16 @@ export function ImportTramosSummaryModal({ resumen, onClose }) {
               </div>
             </div>
 
-            {resumen.actualizados.length > 0 && (
-              <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
-                Los tramos de {resumen.actualizados.join(", ")} se han reemplazado por completo con los del fichero.
+            {resumen.tieneJornada ? (
+              resumen.actualizados.length > 0 && (
+                <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+                  Los tramos de {resumen.actualizados.join(", ")} se han reemplazado por completo con los del fichero.
+                </p>
+              )
+            ) : (
+              <p className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2">
+                Este fichero solo traía datos de identidad (sin fechas de jornada), así que se ha actualizado el nombre, convenio, número de
+                Sercomosa y/o NIF de los trabajadores que correspondía — sus tramos de jornada existentes <strong>no se han tocado</strong>.
               </p>
             )}
 
@@ -514,6 +521,7 @@ export function WarningModal({ mensaje, onCancel, onConfirm }) {
 export function NuevoEmpleadoForm({ onCancel, onSave }) {
   const [sap, setSap] = useState("");
   const [numSercomosa, setNumSercomosa] = useState("");
+  const [nif, setNif] = useState("");
   const [nombre, setNombre] = useState("");
   const [convenio, setConvenio] = useState(CONVENIOS[0]);
 
@@ -533,11 +541,12 @@ export function NuevoEmpleadoForm({ onCancel, onSave }) {
           onChange={(e) => setNumSercomosa(e.target.value)}
           className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
         />
+        <input placeholder="NIF (opcional)" value={nif} onChange={(e) => setNif(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm" />
         <input
           placeholder="Apellidos y nombre"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm sm:col-span-2"
         />
         <select value={convenio} onChange={(e) => setConvenio(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm sm:col-span-3">
           {CONVENIOS.map((c) => (
@@ -547,7 +556,7 @@ export function NuevoEmpleadoForm({ onCancel, onSave }) {
       </div>
       <button
         disabled={!sap || !nombre}
-        onClick={() => onSave({ sap, numSercomosa, nombre, convenio })}
+        onClick={() => onSave({ sap, numSercomosa, nif, nombre, convenio })}
         className="mt-3 text-sm bg-slate-900 disabled:opacity-40 text-white px-4 py-2 rounded-lg"
       >
         Guardar

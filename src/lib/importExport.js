@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { CODIGOS, CONVENIOS, JORNADA_COMPLETA_SEMANAL, LIMITE_EXTRA_ANUAL, computeBolsa, tramoEnFecha, tramosEnMes } from "./logic";
+import { CODIGOS, CONVENIOS, JORNADA_COMPLETA_SEMANAL, LIMITE_EXTRA_ANUAL, computeBolsa, tramoEnFecha, tramosEnMes, uid } from "./logic";
 
 // -----------------------------------------------------------------------
 // Importacion y exportacion de Excel: funciones trasladadas tal cual
@@ -416,18 +416,20 @@ export async function importarExcelTramos(file, empleadosActuales) {
     tipoCol = -1,
     horasCol = -1,
     pctComplCol = -1,
-    numSercomosaCol = -1;
+    numSercomosaCol = -1,
+    nifCol = -1;
 
   for (let i = 0; i < rows.length; i++) {
     const header = rows[i].map((c) => sinAcentos(String(c ?? "").trim().toLowerCase()));
     const tryId = header.findIndex((h) => (h.includes("sap") && h.includes("id")) || (h.includes("numero") && h.includes("personal")) || h.includes("dni"));
     const tryConvenio = header.findIndex((h) => h.includes("convenio") || h.includes("subdivision"));
-    const tryFechaIni = header.findIndex((h) => h.includes("inicio") || h.includes("alta"));
-    if (tryId !== -1 && tryConvenio !== -1 && tryFechaIni !== -1) {
+    // Ya NO exigimos que haya fecha de inicio/alta para reconocer la cabecera: puede ser
+    // un fichero solo de identidad (sin jornada), que se procesa en modo distinto más abajo.
+    if (tryId !== -1 && tryConvenio !== -1) {
       headerRowIdx = i;
       idCol = tryId;
       convenioCol = tryConvenio;
-      fechaIniCol = tryFechaIni;
+      fechaIniCol = header.findIndex((h) => h.includes("inicio") || h.includes("alta"));
       tipoCol = header.findIndex((h) => h.includes("tipo"));
       nombreCol = header.findIndex((h) => h.includes("apellidos") && h.includes("nombre"));
       apellidoCol = header.findIndex((h) => h.includes("apellido") && !h.includes("segundo"));
@@ -437,16 +439,21 @@ export async function importarExcelTramos(file, empleadosActuales) {
       horasCol = header.findIndex((h) => h.includes("semana") || h.includes("horas"));
       pctComplCol = header.findIndex((h) => h.includes("complementaria"));
       numSercomosaCol = header.findIndex((h) => h.includes("sercomosa"));
+      nifCol = header.findIndex((h) => h.includes("nif") || h.includes("dni"));
+      // el idCol ya pudo haber capturado "dni" si no habia sap+id: evitamos que nifCol apunte a la misma columna
+      if (nifCol === idCol) nifCol = -1;
       break;
     }
   }
 
   if (headerRowIdx === -1) {
-    return { error: `No se ha encontrado la fila de cabecera (identificador, convenio/subdivisión, fecha inicio/alta) en la hoja "${sheetName}".` };
+    return { error: `No se ha encontrado la fila de cabecera (identificador y convenio/subdivisión) en la hoja "${sheetName}".` };
   }
-  if (tipoCol === -1 && horasCol === -1) {
+
+  const tieneJornada = fechaIniCol !== -1;
+  if (tieneJornada && tipoCol === -1 && horasCol === -1) {
     return {
-      error: `Este fichero no trae ni una columna "Tipo" ni una de horas semanales, así que no hay forma de saber si cada tramo es Completa o Parcial en la hoja "${sheetName}".`,
+      error: `Este fichero trae fechas de jornada pero ni una columna "Tipo" ni una de horas semanales, así que no hay forma de saber si cada tramo es Completa o Parcial en la hoja "${sheetName}".`,
     };
   }
 
@@ -458,12 +465,9 @@ export async function importarExcelTramos(file, empleadosActuales) {
     if (!row || row.every((c) => c === null || c === "")) continue;
 
     const convenioRaw = row[convenioCol];
-    const fechaIniRaw = row[fechaIniCol];
-    const tipoRaw = tipoCol !== -1 ? row[tipoCol] : null;
-    if (!convenioRaw && !tipoRaw && !fechaIniRaw) continue; // fila decorativa/instrucciones, no es una fila de datos
-
     const sap = String(row[idCol] ?? "").trim();
     if (!sap) continue;
+    if (!convenioRaw) continue; // fila decorativa/instrucciones, no es una fila de datos
 
     let nombre = "";
     if (nombreCol !== -1) {
@@ -476,16 +480,28 @@ export async function importarExcelTramos(file, empleadosActuales) {
     }
 
     const convenio = normalizarConvenio(convenioRaw);
-    const fechaInicio = parseFechaExcel(fechaIniRaw);
-    const fechaFin = fechaFinCol !== -1 ? parseFechaExcel(row[fechaFinCol]) : null;
-    const horasSemana = horasCol !== -1 ? parseNumero(row[horasCol]) ?? 0 : 0;
-    const pctComplementaria = pctComplCol !== -1 && row[pctComplCol] != null ? parseNumero(row[pctComplCol]) ?? 30 : 30;
     const numSercomosa = numSercomosaCol !== -1 ? String(row[numSercomosaCol] ?? "").trim() : "";
+    const nif = nifCol !== -1 ? String(row[nifCol] ?? "").trim() : "";
 
     if (!convenio) {
       filasConError.push(`Fila ${i + 1}: convenio "${convenioRaw}" no reconocido`);
       continue;
     }
+
+    tramosPorSap[sap] = tramosPorSap[sap] || { nombre, convenio, numSercomosa, nif, tramos: [], tieneJornadaEnFichero: tieneJornada };
+    if (nombre) tramosPorSap[sap].nombre = nombre;
+    if (numSercomosa) tramosPorSap[sap].numSercomosa = numSercomosa;
+    if (nif) tramosPorSap[sap].nif = nif;
+
+    if (!tieneJornada) continue; // fichero solo de identidad: no se crean tramos
+
+    const fechaIniRaw = row[fechaIniCol];
+    const tipoRaw = tipoCol !== -1 ? row[tipoCol] : null;
+    const fechaInicio = parseFechaExcel(fechaIniRaw);
+    const fechaFin = fechaFinCol !== -1 ? parseFechaExcel(row[fechaFinCol]) : null;
+    const horasSemana = horasCol !== -1 ? parseNumero(row[horasCol]) ?? 0 : 0;
+    const pctComplementaria = pctComplCol !== -1 && row[pctComplCol] != null ? parseNumero(row[pctComplCol]) ?? 30 : 30;
+
     if (!fechaInicio) {
       filasConError.push(`Fila ${i + 1}: fecha de inicio no reconocida ("${fechaIniRaw}")`);
       continue;
@@ -505,9 +521,6 @@ export async function importarExcelTramos(file, empleadosActuales) {
       }
     }
 
-    tramosPorSap[sap] = tramosPorSap[sap] || { nombre, convenio, numSercomosa, tramos: [] };
-    if (nombre) tramosPorSap[sap].nombre = nombre;
-    if (numSercomosa) tramosPorSap[sap].numSercomosa = numSercomosa;
     tramosPorSap[sap].tramos.push({
       id: uid(),
       inicio: fechaInicio,
@@ -529,5 +542,5 @@ export async function importarExcelTramos(file, empleadosActuales) {
     else creados.push(sap);
   });
 
-  return { tramosPorSap, creados, actualizados, filasConError };
+  return { tramosPorSap, creados, actualizados, filasConError, tieneJornada };
 }

@@ -239,26 +239,46 @@ function ControlHoras() {
         for (const [sap, datos] of Object.entries(resumen.tramosPorSap)) {
           if (sapsExistentes.has(sap)) {
             const empExistente = empleados.find((e) => e.sap.trim() === sap);
-            const tramosGuardados = await reemplazarTramosDeEmpleado(empExistente.id, datos.tramos);
-            tramosGuardadosPorSap[sap] = tramosGuardados;
-            if (datos.numSercomosa && datos.numSercomosa !== empExistente.numSercomosa) {
-              await actualizarEmpleado(empExistente.id, { numSercomosa: datos.numSercomosa });
+
+            // Solo tocamos los tramos si el fichero trae fechas de jornada de verdad.
+            // Un fichero solo de identidad (sin Fecha Alta/horas) NUNCA debe borrar
+            // los tramos que ya tuviera cargados ese trabajador.
+            if (resumen.tieneJornada) {
+              const tramosGuardados = await reemplazarTramosDeEmpleado(empExistente.id, datos.tramos);
+              tramosGuardadosPorSap[sap] = tramosGuardados;
             }
+
+            const cambios = {};
+            if (datos.numSercomosa && datos.numSercomosa !== empExistente.numSercomosa) cambios.numSercomosa = datos.numSercomosa;
+            if (datos.nif && datos.nif !== empExistente.nif) cambios.nif = datos.nif;
+            if (Object.keys(cambios).length > 0) await actualizarEmpleado(empExistente.id, cambios);
           } else {
-            const nuevoEmp = await crearEmpleado({ sap, numSercomosa: datos.numSercomosa, nombre: datos.nombre || sap, convenio: datos.convenio });
-            const tramosGuardados = await reemplazarTramosDeEmpleado(nuevoEmp.id, datos.tramos);
-            empleadosNuevos.push({ ...nuevoEmp, tramos: tramosGuardados, numSercomosa: datos.numSercomosa || "" });
+            const nuevoEmp = await crearEmpleado({
+              sap,
+              numSercomosa: datos.numSercomosa,
+              nif: datos.nif,
+              nombre: datos.nombre || sap,
+              convenio: datos.convenio,
+            });
+            let tramosGuardados = [];
+            if (resumen.tieneJornada && datos.tramos.length > 0) {
+              tramosGuardados = await reemplazarTramosDeEmpleado(nuevoEmp.id, datos.tramos);
+            }
+            empleadosNuevos.push({ ...nuevoEmp, tramos: tramosGuardados });
           }
         }
 
         setEmpleados((prev) => {
           const actualizados = prev.map((emp) => {
             const sap = emp.sap.trim();
-            if (tramosGuardadosPorSap[sap]) {
-              const datos = resumen.tramosPorSap[sap];
-              return { ...emp, tramos: tramosGuardadosPorSap[sap], numSercomosa: datos.numSercomosa || emp.numSercomosa || "" };
-            }
-            return emp;
+            const datos = resumen.tramosPorSap[sap];
+            if (!datos) return emp;
+            return {
+              ...emp,
+              tramos: tramosGuardadosPorSap[sap] || emp.tramos,
+              numSercomosa: datos.numSercomosa || emp.numSercomosa || "",
+              nif: datos.nif || emp.nif || "",
+            };
           });
           return [...actualizados, ...empleadosNuevos];
         });

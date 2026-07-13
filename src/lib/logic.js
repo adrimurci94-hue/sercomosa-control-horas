@@ -25,6 +25,8 @@ export const JORNADA_COMPLETA_SEMANAL = {
 
 export const LIMITE_EXTRA_ANUAL = 80;
 
+export const uid = () => Math.random().toString(36).slice(2, 10);
+
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000) + 1;
