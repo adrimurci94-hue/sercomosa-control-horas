@@ -375,11 +375,13 @@ function ControlHoras() {
             <button
               onClick={() => {
                 const y = Number(fechaCorte.slice(0, 4)) - 1;
+                if (y < 2026) return;
                 setFechaCorte(`${y}-12-31`);
                 setSiguiendoHoy(false);
               }}
-              className="text-xs text-slate-400 hover:text-slate-600 px-1"
-              title="Ver año anterior (31/12)"
+              disabled={Number(fechaCorte.slice(0, 4)) <= 2026}
+              className="text-xs text-slate-400 hover:text-slate-600 px-1 disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:text-slate-400"
+              title="Ver año anterior (31/12) — no disponible antes de 2026"
             >
               ◀
             </button>
@@ -387,9 +389,11 @@ function ControlHoras() {
             <input
               type="date"
               value={fechaCorte}
+              min="2026-01-01"
               onChange={(e) => {
-                setFechaCorte(e.target.value);
-                setSiguiendoHoy(e.target.value === todayISO());
+                const valor = e.target.value < "2026-01-01" ? "2026-01-01" : e.target.value;
+                setFechaCorte(valor);
+                setSiguiendoHoy(valor === todayISO());
               }}
               className="bg-transparent text-sm outline-none"
             />
