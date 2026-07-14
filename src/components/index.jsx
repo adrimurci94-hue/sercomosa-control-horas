@@ -675,9 +675,12 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
       <div className="space-y-2 mb-4 max-h-64 overflow-auto pr-1">
         {ordenados.length === 0 && <p className="text-xs text-slate-400">Sin tramos definidos todavía.</p>}
         {ordenados.map((t) => {
-          const pctReal = referencia > 0 ? Math.round((t.horasSemana / referencia) * 1000) / 10 : 0;
+          const convenioTramo = t.convenio || empleado.convenio;
+          const referenciaTramo = JORNADA_COMPLETA_SEMANAL[convenioTramo] || 40;
+          const pctReal = referenciaTramo > 0 ? Math.round((t.horasSemana / referenciaTramo) * 1000) / 10 : 0;
           const horasRedondeadas = Math.round((t.horasSemana + Number.EPSILON) * 100) / 100;
           const inicioMostrado = t.inicio < FECHA_INICIO_SISTEMA ? FECHA_INICIO_SISTEMA : t.inicio;
+          const convenioDistinto = t.convenio && t.convenio !== empleado.convenio;
           return (
             <div key={t.id} className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-2">
               <div>
@@ -690,6 +693,11 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
                   {t.tipo} {t.tipo === "Parcial" ? `${pctReal}%` : ""}
                 </span>
                 {t.tipo !== "Baja" && <span className="ml-2 text-slate-400">{horasRedondeadas}h/sem</span>}
+                {convenioDistinto && (
+                  <span className="ml-2 text-[10px] text-amber-600" title={`Este tramo pertenece a ${t.convenio}, distinto del convenio actual del trabajador`}>
+                    ({t.convenio})
+                  </span>
+                )}
               </div>
               <button onClick={() => onRemove(t.id)}>
                 <Trash2 size={13} className="text-slate-300 hover:text-rose-500" />
