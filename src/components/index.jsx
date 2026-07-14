@@ -577,6 +577,62 @@ export function NuevoEmpleadoForm({ onCancel, onSave }) {
   );
 }
 
+export function EditarEmpleadoForm({ empleado, onCancel, onSave }) {
+  const [numSercomosa, setNumSercomosa] = useState(empleado.numSercomosa || "");
+  const [nif, setNif] = useState(empleado.nif || "");
+  const [nombre, setNombre] = useState(empleado.nombre || "");
+  const [convenio, setConvenio] = useState(empleado.convenio || CONVENIOS[0]);
+
+  const cambioConvenio = convenio !== empleado.convenio;
+
+  return (
+    <div className="bg-white border border-amber-200 bg-amber-50/30 rounded-xl p-5 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-sm text-slate-800">Editar trabajador — {empleado.sap}</h3>
+        <button onClick={onCancel}>
+          <X size={16} className="text-slate-400" />
+        </button>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <input
+          placeholder="Número de Sercomosa (opcional)"
+          value={numSercomosa}
+          onChange={(e) => setNumSercomosa(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+        />
+        <input placeholder="NIF (opcional)" value={nif} onChange={(e) => setNif(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+        <input
+          placeholder="Apellidos y nombre"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+        />
+        <select value={convenio} onChange={(e) => setConvenio(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm sm:col-span-3">
+          {CONVENIOS.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+      </div>
+
+      {cambioConvenio && (
+        <p className="text-xs text-amber-700 bg-amber-100 border border-amber-200 rounded-lg px-3 py-2 mt-3">
+          ⚠ Vas a cambiar el convenio de <strong>{empleado.convenio}</strong> a <strong>{convenio}</strong>. El % de jornada de los tramos ya guardados se
+          recalculará en pantalla con la jornada de referencia del convenio nuevo (las horas exactas guardadas no se tocan). Si esto representa un cambio de
+          servicio real, lo correcto es primero cerrar el último tramo con su fecha fin y luego cambiar el convenio aquí.
+        </p>
+      )}
+
+      <button
+        disabled={!nombre}
+        onClick={() => onSave(empleado.id, { numSercomosa, nif, nombre, convenio })}
+        className="mt-3 text-sm bg-amber-600 disabled:opacity-40 text-white px-4 py-2 rounded-lg hover:bg-amber-700"
+      >
+        Guardar cambios
+      </button>
+    </div>
+  );
+}
+
 const FECHA_INICIO_SISTEMA = "2026-01-01";
 
 export function TramosPanel({ empleado, onAdd, onRemove }) {
