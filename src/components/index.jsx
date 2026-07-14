@@ -600,24 +600,28 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
 
       <div className="space-y-2 mb-4 max-h-64 overflow-auto pr-1">
         {ordenados.length === 0 && <p className="text-xs text-slate-400">Sin tramos definidos todavía.</p>}
-        {ordenados.map((t) => (
-          <div key={t.id} className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-2">
-            <div>
-              <span className="font-medium">{t.inicio}</span> → <span className="font-medium">{t.fin || "vigente"}</span>
-              <span
-                className={`ml-2 px-1.5 py-0.5 rounded ${
-                  t.tipo === "Completa" ? "bg-sky-100 text-sky-700" : t.tipo === "Parcial" ? "bg-violet-100 text-violet-700" : "bg-slate-200 text-slate-600"
-                }`}
-              >
-                {t.tipo} {t.tipo === "Parcial" ? `${t.pct}%` : ""}
-              </span>
-              {t.tipo !== "Baja" && <span className="ml-2 text-slate-400">{t.horasSemana}h/sem</span>}
+        {ordenados.map((t) => {
+          const pctReal = referencia > 0 ? Math.round((t.horasSemana / referencia) * 1000) / 10 : 0;
+          const horasRedondeadas = Math.round((t.horasSemana + Number.EPSILON) * 100) / 100;
+          return (
+            <div key={t.id} className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-2">
+              <div>
+                <span className="font-medium">{t.inicio}</span> → <span className="font-medium">{t.fin || "vigente"}</span>
+                <span
+                  className={`ml-2 px-1.5 py-0.5 rounded ${
+                    t.tipo === "Completa" ? "bg-sky-100 text-sky-700" : t.tipo === "Parcial" ? "bg-violet-100 text-violet-700" : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {t.tipo} {t.tipo === "Parcial" ? `${pctReal}%` : ""}
+                </span>
+                {t.tipo !== "Baja" && <span className="ml-2 text-slate-400">{horasRedondeadas}h/sem</span>}
+              </div>
+              <button onClick={() => onRemove(t.id)}>
+                <Trash2 size={13} className="text-slate-300 hover:text-rose-500" />
+              </button>
             </div>
-            <button onClick={() => onRemove(t.id)}>
-              <Trash2 size={13} className="text-slate-300 hover:text-rose-500" />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="border-t border-slate-100 pt-3 space-y-2">

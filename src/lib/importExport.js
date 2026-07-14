@@ -499,7 +499,8 @@ export async function importarExcelTramos(file, empleadosActuales) {
     const tipoRaw = tipoCol !== -1 ? row[tipoCol] : null;
     const fechaInicio = parseFechaExcel(fechaIniRaw);
     const fechaFin = fechaFinCol !== -1 ? parseFechaExcel(row[fechaFinCol]) : null;
-    const horasSemana = horasCol !== -1 ? parseNumero(row[horasCol]) ?? 0 : 0;
+    const horasSemanaRaw = horasCol !== -1 ? parseNumero(row[horasCol]) ?? 0 : 0;
+    const horasSemana = Math.round((horasSemanaRaw + Number.EPSILON) * 100) / 100;
     const pctComplementaria = pctComplCol !== -1 && row[pctComplCol] != null ? parseNumero(row[pctComplCol]) ?? 30 : 30;
 
     if (!fechaInicio) {
