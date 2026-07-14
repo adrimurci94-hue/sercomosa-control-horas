@@ -565,10 +565,14 @@ export function NuevoEmpleadoForm({ onCancel, onSave }) {
   );
 }
 
+const FECHA_INICIO_SISTEMA = "2026-01-01";
+
 export function TramosPanel({ empleado, onAdd, onRemove }) {
   const referencia = JORNADA_COMPLETA_SEMANAL[empleado.convenio] || 40;
   const [form, setForm] = useState({ inicio: todayISO(), esBaja: false, horasSemana: referencia, pctComplementaria: 30 });
-  const ordenados = [...empleado.tramos].sort((a, b) => a.inicio.localeCompare(b.inicio));
+  const ordenados = [...empleado.tramos]
+    .filter((t) => !t.fin || t.fin >= FECHA_INICIO_SISTEMA)
+    .sort((a, b) => a.inicio.localeCompare(b.inicio));
 
   const horasSemana = Number(form.horasSemana) || 0;
   const pctCalculado = Math.min(100, Math.round((horasSemana / referencia) * 1000) / 10);
@@ -596,6 +600,8 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
       </h3>
       <p className="text-xs text-slate-400 -mt-2 mb-3">
         Jornada completa de referencia ({empleado.convenio}): <span className="font-medium text-slate-500">{referencia}h/semana</span>
+        <br />
+        Solo se muestran tramos vigentes en 2026 o posteriores; los anteriores no se han borrado, solo están ocultos aquí.
       </p>
 
       <div className="space-y-2 mb-4 max-h-64 overflow-auto pr-1">
@@ -603,10 +609,11 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
         {ordenados.map((t) => {
           const pctReal = referencia > 0 ? Math.round((t.horasSemana / referencia) * 1000) / 10 : 0;
           const horasRedondeadas = Math.round((t.horasSemana + Number.EPSILON) * 100) / 100;
+          const inicioMostrado = t.inicio < FECHA_INICIO_SISTEMA ? FECHA_INICIO_SISTEMA : t.inicio;
           return (
             <div key={t.id} className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-2">
               <div>
-                <span className="font-medium">{t.inicio}</span> → <span className="font-medium">{t.fin || "vigente"}</span>
+                <span className="font-medium">{inicioMostrado}</span> → <span className="font-medium">{t.fin || "vigente"}</span>
                 <span
                   className={`ml-2 px-1.5 py-0.5 rounded ${
                     t.tipo === "Completa" ? "bg-sky-100 text-sky-700" : t.tipo === "Parcial" ? "bg-violet-100 text-violet-700" : "bg-slate-200 text-slate-600"
