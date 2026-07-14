@@ -487,6 +487,7 @@ function ControlHoras() {
           setSeleccion={setSeleccionExport}
           onCancel={() => setShowExportPicker(false)}
           onConfirm={confirmarExport}
+          fechaCorte={fechaCorte}
         />
       )}
 

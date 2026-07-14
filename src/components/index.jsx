@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, AlertTriangle, CheckCircle2, Users, CalendarRange, Clock, Info, X, FileSpreadsheet, Upload } from "lucide-react";
-import { CODIGOS, CONVENIOS, JORNADA_COMPLETA_SEMANAL, todayISO } from "../lib/logic";
+import { CODIGOS, CONVENIOS, JORNADA_COMPLETA_SEMANAL, todayISO, tramoEnFecha } from "../lib/logic";
 
 export function DesglosePanel({ desglose, anio }) {
   const [abierto, setAbierto] = useState(true);
@@ -376,7 +376,7 @@ export function EmployeeSelector({ empleados, selectedId, onSelect }) {
 }
 
 
-export function ExportPickerModal({ empleados, seleccion, setSeleccion, onCancel, onConfirm }) {
+export function ExportPickerModal({ empleados, seleccion, setSeleccion, onCancel, onConfirm, fechaCorte }) {
   const [convenioAbierto, setConvenioAbierto] = useState(null);
 
   const porConvenio = {};
@@ -399,6 +399,15 @@ export function ExportPickerModal({ empleados, seleccion, setSeleccion, onCancel
     setSeleccion(nuevo);
   };
 
+  const excluirDeBaja = () => {
+    const nuevo = { ...seleccion };
+    empleados.forEach((e) => {
+      const tramo = tramoEnFecha(e, fechaCorte);
+      if (tramo?.tipo === "Baja") nuevo[e.id] = false;
+    });
+    setSeleccion(nuevo);
+  };
+
   return (
     <div className="absolute inset-0 z-50">
       <div className="sticky top-0 h-screen w-full flex items-center justify-center p-4 bg-slate-900/40">
@@ -413,12 +422,15 @@ export function ExportPickerModal({ empleados, seleccion, setSeleccion, onCancel
         </div>
         <p className="text-xs text-slate-500 mb-3">Haz clic en un convenio para ver y marcar sus trabajadores.</p>
 
-        <div className="flex gap-3 mb-3 text-xs">
+        <div className="flex gap-3 mb-3 text-xs flex-wrap">
           <button onClick={() => marcarTodos(true)} className="text-sky-600 hover:underline">
             Marcar todos
           </button>
           <button onClick={() => marcarTodos(false)} className="text-sky-600 hover:underline">
             Desmarcar todos
+          </button>
+          <button onClick={excluirDeBaja} className="text-amber-600 hover:underline" title={`Desmarca a quien esté de baja a fecha ${fechaCorte}`}>
+            Excluir de baja
           </button>
         </div>
 
