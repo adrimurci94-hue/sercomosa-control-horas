@@ -14,8 +14,9 @@ function tramoDeFila(fila) {
     inicio: fila.inicio,
     fin: fila.fin,
     tipo: fila.tipo,
-    horasSemana: fila.horas_semana,
-    pctComplementaria: fila.pct_complementaria,
+    horasSemana: Number(fila.horas_semana) || 0,
+    pctComplementaria: Number(fila.pct_complementaria) || 30,
+    convenio: fila.convenio || null,
     pct: fila.tipo === "Completa" ? 100 : null, // se recalcula en pantalla si hace falta
   };
 }
@@ -108,6 +109,7 @@ export async function insertarTramo(empleadoId, tramo) {
       tipo: tramo.tipo,
       horas_semana: tramo.horasSemana,
       pct_complementaria: tramo.pctComplementaria,
+      convenio: tramo.convenio || null,
     })
     .select()
     .single();
@@ -138,6 +140,7 @@ export async function reemplazarTramosDeEmpleado(empleadoId, tramos) {
     tipo: t.tipo,
     horas_semana: t.horasSemana,
     pct_complementaria: t.pctComplementaria,
+    convenio: t.convenio || null,
   }));
   const { data, error } = await supabase.from("tramos_jornada").insert(filas).select();
   if (error) throw error;

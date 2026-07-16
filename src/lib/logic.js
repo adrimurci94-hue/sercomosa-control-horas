@@ -25,6 +25,11 @@ export const JORNADA_COMPLETA_SEMANAL = {
 
 export const LIMITE_EXTRA_ANUAL = 80;
 
+// Contraseña de confirmación antes de borrar un tramo o un registro de horas.
+// Es solo una fricción para evitar despistes de quien ya tiene acceso legítimo
+// (el login + RLS de Supabase son la protección real frente a terceros).
+export const PASSWORD_ELIMINAR = "**";
+
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 export const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -75,7 +80,7 @@ export function computeBolsa(empleado, hastaISO) {
       const CUMPLE_MINIMO_LEGAL = t.horasSemana >= 10;
       sinDerechoPorMinimoLegal = !CUMPLE_MINIMO_LEGAL;
       if (CUMPLE_MINIMO_LEGAL) {
-        const referencia = JORNADA_COMPLETA_SEMANAL[empleado.convenio] || 40;
+        const referencia = JORNADA_COMPLETA_SEMANAL[t.convenio || empleado.convenio] || 40;
         const horasDiaPorPorcentaje = (t.horasSemana / 7) * ((t.pctComplementaria || 30) / 100);
         const horasDiaMaxPorJornadaCompleta = Math.max(0, (referencia - t.horasSemana) / 7);
         const horasDiaPermitidas = Math.min(horasDiaPorPorcentaje, horasDiaMaxPorJornadaCompleta);

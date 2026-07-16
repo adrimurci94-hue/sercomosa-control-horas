@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { CODIGOS, CONVENIOS, JORNADA_COMPLETA_SEMANAL, LIMITE_EXTRA_ANUAL, computeBolsa, tramoEnFecha, tramosEnMes, uid } from "./logic";
+import { CODIGOS, CONVENIOS, JORNADA_COMPLETA_SEMANAL, LIMITE_EXTRA_ANUAL, computeBolsa, tramosEnMes, uid } from "./logic";
 
 // -----------------------------------------------------------------------
 // Importacion y exportacion de Excel: funciones trasladadas tal cual
@@ -22,7 +22,7 @@ export function celdaPlano(valor, unidad, aplica) {
   if (!aplica) {
     return `<td style="background:#F3F4F6;color:#9CA3AF;font-style:italic;text-align:center;padding:10px 8px;border:1px solid #E5E7EB;">No aplica</td>`;
   }
-  return `<td style="background:#FFFFFF;color:#374151;text-align:center;padding:10px 8px;border:1px solid #E5E7EB;font-weight:600;">${valor.toFixed(1)}${unidad}</td>`;
+  return `<td style="background:#FFFFFF;color:#374151;text-align:center;padding:10px 8px;border:1px solid #E5E7EB;font-weight:600;">${valor.toFixed(2)}${unidad}</td>`;
 }
 
 export function celdaRestante(restante, tope, aplica, unidad) {
@@ -30,7 +30,7 @@ export function celdaRestante(restante, tope, aplica, unidad) {
     return `<td style="background:#F3F4F6;color:#9CA3AF;font-style:italic;text-align:center;padding:10px 8px;border:1px solid #E5E7EB;">No aplica</td>`;
   }
   const { bg, text } = colorEstado(restante, tope);
-  return `<td style="background:${bg};color:${text};text-align:center;padding:10px 8px;border:1px solid #E5E7EB;font-weight:700;font-size:15px;">${restante.toFixed(1)}${unidad}</td>`;
+  return `<td style="background:${bg};color:${text};text-align:center;padding:10px 8px;border:1px solid #E5E7EB;font-weight:700;font-size:15px;">${restante.toFixed(2)}${unidad}</td>`;
 }
 
 export function exportarExcel(empleados, fechaCorte) {
@@ -51,7 +51,7 @@ export function exportarExcel(empleados, fechaCorte) {
   let seccionesHtml = "";
 
   const celdaTotal = (valor, unidad) =>
-    `<td style="background:${TOTAL_BG};color:#FFFFFF;text-align:center;padding:10px 8px;border:1px solid #E5E7EB;font-weight:700;font-size:14px;">${valor.toFixed(1)}${unidad}</td>`;
+    `<td style="background:${TOTAL_BG};color:#FFFFFF;text-align:center;padding:10px 8px;border:1px solid #E5E7EB;font-weight:700;font-size:14px;">${valor.toFixed(2)}${unidad}</td>`;
 
   CONVENIOS.forEach((conv) => {
     const lista = (porConvenio[conv] || []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -67,8 +67,11 @@ export function exportarExcel(empleados, fechaCorte) {
 
     lista.forEach((emp) => {
       const bolsa = computeBolsa(emp, fechaCorte);
-      const tramoActual = tramoEnFecha(emp, fechaCorte);
-      const aplicaComplementaria = tramoActual?.tipo === "Parcial";
+      // Un trabajador "aplica" a complementarias si ha tenido ALGO acumulado o consumido
+      // en algún momento de este año, no solo si su tramo de HOY es Parcial. Así, alguien
+      // que estuvo a parcial de enero a junio y ahora está a completa sigue mostrando su
+      // bolsa de complementarias (ya cerrada, pero real), en vez de "No aplica".
+      const aplicaComplementaria = bolsa.complementaria.disponibleHastaHoy > 0 || bolsa.complementaria.consumido > 0;
 
       const topeExtra = LIMITE_EXTRA_ANUAL;
       const consExtra = bolsa.extra.consumido;
@@ -530,10 +533,18 @@ export async function importarExcelTramos(file, empleadosActuales) {
       pct: tipo === "Parcial" ? Math.round((horasSemana / (JORNADA_COMPLETA_SEMANAL[convenio] || 40)) * 1000) / 10 : 100,
       horasSemana: tipo === "Baja" ? 0 : horasSemana,
       pctComplementaria,
+      convenio,
     });
   }
 
-  Object.values(tramosPorSap).forEach((e) => e.tramos.sort((a, b) => a.inicio.localeCompare(b.inicio)));
+  Object.values(tramosPorSap).forEach((e) => {
+    e.tramos.sort((a, b) => a.inicio.localeCompare(b.inicio));
+    // El convenio "actual" del trabajador es el del tramo mas reciente que traiga el fichero,
+    // no simplemente el ultimo visto en el orden de las filas (que puede no venir ordenado).
+    if (e.tieneJornadaEnFichero && e.tramos.length > 0) {
+      e.convenio = e.tramos[e.tramos.length - 1].convenio || e.convenio;
+    }
+  });
 
   const creados = [];
   const actualizados = [];

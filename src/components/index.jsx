@@ -530,7 +530,7 @@ export function WarningModal({ mensaje, onCancel, onConfirm }) {
   );
 }
 
-export function ConfirmarBorradoModal({ titulo, mensaje, onCancel, onConfirm }) {
+export function ConfirmarBorradoModal({ titulo, mensaje, onCancel, onConfirm, textoBoton, colorBoton }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -542,12 +542,17 @@ export function ConfirmarBorradoModal({ titulo, mensaje, onCancel, onConfirm }) 
     onConfirm();
   };
 
+  const colores = {
+    rose: "bg-rose-600 hover:bg-rose-700",
+    amber: "bg-amber-600 hover:bg-amber-700",
+  };
+
   return (
     <div className="absolute inset-0 z-50">
       <div className="sticky top-0 h-screen w-full flex items-center justify-center p-4 bg-slate-900/40">
         <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
           <div className="flex items-start gap-3 mb-3">
-            <Lock className="text-rose-500 shrink-0 mt-0.5" size={20} />
+            <Lock className={`${colorBoton === "amber" ? "text-amber-500" : "text-rose-500"} shrink-0 mt-0.5`} size={20} />
             <div>
               <h3 className="font-semibold text-slate-900 mb-1">{titulo || "Confirmar borrado"}</h3>
               <p className="text-sm text-slate-600">{mensaje || "Esta acción no se puede deshacer. Introduce la contraseña para confirmar."}</p>
@@ -570,8 +575,8 @@ export function ConfirmarBorradoModal({ titulo, mensaje, onCancel, onConfirm }) 
             <button onClick={onCancel} className="text-sm px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100">
               Cancelar
             </button>
-            <button onClick={handleConfirmar} className="text-sm px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700">
-              Borrar
+            <button onClick={handleConfirmar} className={`text-sm px-4 py-2 rounded-lg text-white ${colores[colorBoton] || colores.rose}`}>
+              {textoBoton || "Borrar"}
             </button>
           </div>
         </div>
@@ -632,6 +637,7 @@ export function EditarEmpleadoForm({ empleado, onCancel, onSave }) {
   const [nif, setNif] = useState(empleado.nif || "");
   const [nombre, setNombre] = useState(empleado.nombre || "");
   const [convenio, setConvenio] = useState(empleado.convenio || CONVENIOS[0]);
+  const [pidiendoPassword, setPidiendoPassword] = useState(false);
 
   const cambioConvenio = convenio !== empleado.convenio;
 
@@ -674,11 +680,25 @@ export function EditarEmpleadoForm({ empleado, onCancel, onSave }) {
 
       <button
         disabled={!nombre}
-        onClick={() => onSave(empleado.id, { numSercomosa, nif, nombre, convenio })}
+        onClick={() => setPidiendoPassword(true)}
         className="mt-3 text-sm bg-amber-600 disabled:opacity-40 text-white px-4 py-2 rounded-lg hover:bg-amber-700"
       >
         Guardar cambios
       </button>
+
+      {pidiendoPassword && (
+        <ConfirmarBorradoModal
+          titulo="Confirmar cambios del trabajador"
+          mensaje="Introduce la contraseña para guardar los cambios en los datos de este trabajador."
+          textoBoton="Guardar cambios"
+          colorBoton="amber"
+          onCancel={() => setPidiendoPassword(false)}
+          onConfirm={() => {
+            onSave(empleado.id, { numSercomosa, nif, nombre, convenio });
+            setPidiendoPassword(false);
+          }}
+        />
+      )}
     </div>
   );
 }

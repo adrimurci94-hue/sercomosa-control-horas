@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, AlertTriangle, CheckCircle2, Users, CalendarRange, Clock, Info, X, FileSpreadsheet, Upload, LogOut } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, CheckCircle2, Users, CalendarRange, Clock, Info, X, FileSpreadsheet, Upload, LogOut, Pencil } from "lucide-react";
 
 import { supabase } from "./lib/supabaseClient";
 import { CODIGOS, todayISO, addDays, computeBolsa, tramoEnFecha } from "./lib/logic";
@@ -25,7 +25,9 @@ import {
   EmployeeSelector,
   ExportPickerModal,
   WarningModal,
+  ConfirmarBorradoModal,
   NuevoEmpleadoForm,
+  EditarEmpleadoForm,
   TramosPanel,
   RegistrosPanel,
 } from "./components";
@@ -57,7 +59,9 @@ function ControlHoras() {
   const [fechaCorte, setFechaCorte] = useState(todayISO());
   const [siguiendoHoy, setSiguiendoHoy] = useState(true);
   const [showNewEmpleado, setShowNewEmpleado] = useState(false);
+  const [showEditEmpleado, setShowEditEmpleado] = useState(false);
   const [pendingWarning, setPendingWarning] = useState(null);
+  const [pendingDeleteEmpleado, setPendingDeleteEmpleado] = useState(false);
   const [showExportPicker, setShowExportPicker] = useState(false);
   const [seleccionExport, setSeleccionExport] = useState({});
   const [importSummary, setImportSummary] = useState(null);
@@ -101,6 +105,16 @@ function ControlHoras() {
     }
   };
 
+  const editEmpleado = async (empId, campos) => {
+    try {
+      await actualizarEmpleado(empId, campos);
+      setEmpleados((prev) => prev.map((e) => (e.id === empId ? { ...e, ...campos } : e)));
+      setShowEditEmpleado(false);
+    } catch (e) {
+      setError("No se han podido guardar los cambios del trabajador: " + e.message);
+    }
+  };
+
   const removeEmpleado = async (id) => {
     try {
       await eliminarEmpleado(id);
@@ -126,7 +140,7 @@ function ControlHoras() {
         await actualizarFinTramo(abiertoAnterior.id, finCierre);
       }
 
-      const nuevoTramo = await insertarTramo(empId, tramo);
+      const nuevoTramo = await insertarTramo(empId, { ...tramo, convenio: emp.convenio });
 
       setEmpleados((prev) =>
         prev.map((e) => {
@@ -251,6 +265,7 @@ function ControlHoras() {
             const cambios = {};
             if (datos.numSercomosa && datos.numSercomosa !== empExistente.numSercomosa) cambios.numSercomosa = datos.numSercomosa;
             if (datos.nif && datos.nif !== empExistente.nif) cambios.nif = datos.nif;
+            if (resumen.tieneJornada && datos.convenio && datos.convenio !== empExistente.convenio) cambios.convenio = datos.convenio;
             if (Object.keys(cambios).length > 0) await actualizarEmpleado(empExistente.id, cambios);
           } else {
             const nuevoEmp = await crearEmpleado({
@@ -278,6 +293,7 @@ function ControlHoras() {
               tramos: tramosGuardadosPorSap[sap] || emp.tramos,
               numSercomosa: datos.numSercomosa || emp.numSercomosa || "",
               nif: datos.nif || emp.nif || "",
+              convenio: resumen.tieneJornada && datos.convenio ? datos.convenio : emp.convenio,
             };
           });
           return [...actualizados, ...empleadosNuevos];
@@ -337,7 +353,15 @@ function ControlHoras() {
           </button>
           {empleado && (
             <button
-              onClick={() => removeEmpleado(empleado.id)}
+              onClick={() => setShowEditEmpleado(true)}
+              className="flex items-center gap-1 text-sm text-amber-600 px-3 py-2 rounded-lg hover:bg-amber-50 transition-colors"
+            >
+              <Pencil size={15} /> Editar trabajador
+            </button>
+          )}
+          {empleado && (
+            <button
+              onClick={() => setPendingDeleteEmpleado(true)}
               className="flex items-center gap-1 text-sm text-rose-600 px-3 py-2 rounded-lg hover:bg-rose-50 transition-colors"
             >
               <Trash2 size={15} /> Eliminar trabajador
@@ -430,6 +454,9 @@ function ControlHoras() {
         )}
 
         {showNewEmpleado && <NuevoEmpleadoForm onCancel={() => setShowNewEmpleado(false)} onSave={addEmpleado} />}
+        {showEditEmpleado && empleado && (
+          <EditarEmpleadoForm empleado={empleado} onCancel={() => setShowEditEmpleado(false)} onSave={editEmpleado} />
+        )}
 
         {!empleado && !showNewEmpleado && (
           <div className="text-sm text-slate-500 bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center">
@@ -476,6 +503,18 @@ function ControlHoras() {
           onConfirm={() => {
             addRegistro(pendingWarning.empId, pendingWarning.registro, true);
             setPendingWarning(null);
+          }}
+        />
+      )}
+
+      {pendingDeleteEmpleado && empleado && (
+        <ConfirmarBorradoModal
+          titulo="Borrar trabajador"
+          mensaje={`Esta acción no se puede deshacer. Se borrará a ${empleado.nombre} y todos sus tramos y registros de horas. Introduce la contraseña para confirmar.`}
+          onCancel={() => setPendingDeleteEmpleado(false)}
+          onConfirm={() => {
+            removeEmpleado(empleado.id);
+            setPendingDeleteEmpleado(false);
           }}
         />
       )}
