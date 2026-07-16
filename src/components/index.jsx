@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, AlertTriangle, CheckCircle2, Users, CalendarRange, Clock, Info, X, FileSpreadsheet, Upload } from "lucide-react";
-import { CODIGOS, CONVENIOS, JORNADA_COMPLETA_SEMANAL, todayISO, tramoEnFecha } from "../lib/logic";
+import { Plus, Trash2, AlertTriangle, CheckCircle2, Users, CalendarRange, Clock, Info, X, FileSpreadsheet, Upload, Lock } from "lucide-react";
+import { CODIGOS, CONVENIOS, JORNADA_COMPLETA_SEMANAL, todayISO, tramoEnFecha, PASSWORD_ELIMINAR } from "../lib/logic";
 
 export function DesglosePanel({ desglose, anio }) {
   const [abierto, setAbierto] = useState(true);
@@ -125,8 +125,8 @@ export function BolsaCard({ titulo, subtitulo, data, unidad = "h" }) {
       </div>
 
       <div className="mt-4 flex items-baseline gap-1">
-        <span className="text-3xl font-bold text-slate-900">{data.consumido.toFixed(1)}</span>
-        <span className="text-slate-400 text-sm">/ {data.disponibleHastaHoy.toFixed(1)} {unidad} disponibles hoy</span>
+        <span className="text-3xl font-bold text-slate-900">{data.consumido.toFixed(2)}</span>
+        <span className="text-slate-400 text-sm">/ {data.disponibleHastaHoy.toFixed(2)} {unidad} disponibles hoy</span>
       </div>
 
       <div className="mt-3 h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -134,9 +134,9 @@ export function BolsaCard({ titulo, subtitulo, data, unidad = "h" }) {
       </div>
 
       <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-        <span>Proyección a 31/dic: {data.disponibleAnual.toFixed(1)} {unidad}</span>
+        <span>Proyección a 31/dic: {data.disponibleAnual.toFixed(2)} {unidad}</span>
         <span className={excedido ? "text-rose-600 font-semibold" : "text-slate-500"}>
-          {excedido ? `Excedido ${(data.consumido - data.disponibleHastaHoy).toFixed(1)} ${unidad}` : `Quedan ${data.restanteHastaHoy.toFixed(1)} ${unidad}`}
+          {excedido ? `Excedido ${(data.consumido - data.disponibleHastaHoy).toFixed(2)} ${unidad}` : `Quedan ${data.restanteHastaHoy.toFixed(2)} ${unidad}`}
         </span>
       </div>
     </div>
@@ -232,7 +232,7 @@ export function ImportSummaryModal({ resumen, onClose }) {
                 <div className="text-xs text-emerald-600">registros importados</div>
               </div>
               <div className="bg-sky-50 border border-sky-200 rounded-lg px-4 py-2 flex-1 text-center">
-                <div className="text-2xl font-bold text-sky-700">{resumen.totalHoras.toFixed(1)}h</div>
+                <div className="text-2xl font-bold text-sky-700">{resumen.totalHoras.toFixed(2)}h</div>
                 <div className="text-xs text-sky-600">horas totales procesadas</div>
               </div>
             </div>
@@ -254,7 +254,7 @@ export function ImportSummaryModal({ resumen, onClose }) {
                       <td className="py-1.5 px-2 font-mono text-slate-600">{cod}</td>
                       <td className="py-1.5 px-2 text-slate-600">{d.label}</td>
                       <td className={`py-1.5 px-2 text-right ${d.filas === 0 ? "text-slate-300" : "text-slate-700 font-medium"}`}>{d.filas}</td>
-                      <td className={`py-1.5 px-2 text-right ${d.filas === 0 ? "text-slate-300" : "text-slate-700 font-medium"}`}>{d.horas.toFixed(1)}h</td>
+                      <td className={`py-1.5 px-2 text-right ${d.filas === 0 ? "text-slate-300" : "text-slate-700 font-medium"}`}>{d.horas.toFixed(2)}h</td>
                     </tr>
                   ))}
                 </tbody>
@@ -530,6 +530,56 @@ export function WarningModal({ mensaje, onCancel, onConfirm }) {
   );
 }
 
+export function ConfirmarBorradoModal({ titulo, mensaje, onCancel, onConfirm }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleConfirmar = () => {
+    if (password !== PASSWORD_ELIMINAR) {
+      setError("Contraseña incorrecta.");
+      return;
+    }
+    onConfirm();
+  };
+
+  return (
+    <div className="absolute inset-0 z-50">
+      <div className="sticky top-0 h-screen w-full flex items-center justify-center p-4 bg-slate-900/40">
+        <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
+          <div className="flex items-start gap-3 mb-3">
+            <Lock className="text-rose-500 shrink-0 mt-0.5" size={20} />
+            <div>
+              <h3 className="font-semibold text-slate-900 mb-1">{titulo || "Confirmar borrado"}</h3>
+              <p className="text-sm text-slate-600">{mensaje || "Esta acción no se puede deshacer. Introduce la contraseña para confirmar."}</p>
+            </div>
+          </div>
+          <input
+            type="password"
+            autoFocus
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError("");
+            }}
+            onKeyDown={(e) => e.key === "Enter" && handleConfirmar()}
+            placeholder="Contraseña"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+          />
+          {error && <p className="text-xs text-rose-600 mt-1">{error}</p>}
+          <div className="flex justify-end gap-2 mt-5">
+            <button onClick={onCancel} className="text-sm px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100">
+              Cancelar
+            </button>
+            <button onClick={handleConfirmar} className="text-sm px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700">
+              Borrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function NuevoEmpleadoForm({ onCancel, onSave }) {
   const [sap, setSap] = useState("");
   const [numSercomosa, setNumSercomosa] = useState("");
@@ -638,12 +688,13 @@ const FECHA_INICIO_SISTEMA = "2026-01-01";
 export function TramosPanel({ empleado, onAdd, onRemove }) {
   const referencia = JORNADA_COMPLETA_SEMANAL[empleado.convenio] || 40;
   const [form, setForm] = useState({ inicio: todayISO(), esBaja: false, horasSemana: referencia, pctComplementaria: 30 });
+  const [pendingDelete, setPendingDelete] = useState(null);
   const ordenados = [...empleado.tramos]
     .filter((t) => !t.fin || t.fin >= FECHA_INICIO_SISTEMA)
     .sort((a, b) => a.inicio.localeCompare(b.inicio));
 
   const horasSemana = Number(form.horasSemana) || 0;
-  const pctCalculado = Math.min(100, Math.round((horasSemana / referencia) * 1000) / 10);
+  const pctCalculado = Math.min(100, (horasSemana / referencia) * 100);
   const tipoCalculado = form.esBaja ? "Baja" : horasSemana >= referencia - 0.01 ? "Completa" : "Parcial";
   const cumpleMinimoLegal = horasSemana >= 10;
   const complSemanaPorPorcentaje = horasSemana * ((form.pctComplementaria || 30) / 100);
@@ -677,8 +728,7 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
         {ordenados.map((t) => {
           const convenioTramo = t.convenio || empleado.convenio;
           const referenciaTramo = JORNADA_COMPLETA_SEMANAL[convenioTramo] || 40;
-          const pctReal = referenciaTramo > 0 ? Math.round((t.horasSemana / referenciaTramo) * 1000) / 10 : 0;
-          const horasRedondeadas = Math.round((t.horasSemana + Number.EPSILON) * 100) / 100;
+          const pctReal = referenciaTramo > 0 ? (t.horasSemana / referenciaTramo) * 100 : 0;
           const inicioMostrado = t.inicio < FECHA_INICIO_SISTEMA ? FECHA_INICIO_SISTEMA : t.inicio;
           const convenioDistinto = t.convenio && t.convenio !== empleado.convenio;
           return (
@@ -690,16 +740,16 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
                     t.tipo === "Completa" ? "bg-sky-100 text-sky-700" : t.tipo === "Parcial" ? "bg-violet-100 text-violet-700" : "bg-slate-200 text-slate-600"
                   }`}
                 >
-                  {t.tipo} {t.tipo === "Parcial" ? `${pctReal}%` : ""}
+                  {t.tipo} {t.tipo === "Parcial" ? `${pctReal.toFixed(2)}%` : ""}
                 </span>
-                {t.tipo !== "Baja" && <span className="ml-2 text-slate-400">{horasRedondeadas}h/sem</span>}
+                {t.tipo !== "Baja" && <span className="ml-2 text-slate-400">{t.horasSemana.toFixed(2)}h/sem</span>}
                 {convenioDistinto && (
                   <span className="ml-2 text-[10px] text-amber-600" title={`Este tramo pertenece a ${t.convenio}, distinto del convenio actual del trabajador`}>
                     ({t.convenio})
                   </span>
                 )}
               </div>
-              <button onClick={() => onRemove(t.id)}>
+              <button onClick={() => setPendingDelete(t.id)}>
                 <Trash2 size={13} className="text-slate-300 hover:text-rose-500" />
               </button>
             </div>
@@ -754,7 +804,7 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
                 {tipoCalculado}
               </span>
               <span className="text-slate-500">
-                {horasSemana}h de {referencia}h → <span className="font-semibold text-slate-700">{pctCalculado}% de jornada</span>
+                {horasSemana.toFixed(2)}h de {referencia.toFixed(2)}h → <span className="font-semibold text-slate-700">{pctCalculado.toFixed(2)}% de jornada</span>
               </span>
             </>
           )}
@@ -764,7 +814,7 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
           <div className={`text-xs rounded-lg px-3 py-2 ${cumpleMinimoLegal ? "bg-slate-50 text-slate-500" : "bg-rose-50 text-rose-700"}`}>
             {!cumpleMinimoLegal ? (
               <span>
-                ⛔ Con {horasSemana}h/semana no llega al mínimo de 10h/semana que exige el art. 12.5.b ET para poder pactar horas complementarias. Este tramo
+                ⛔ Con {horasSemana.toFixed(2)}h/semana no llega al mínimo de 10h/semana que exige el art. 12.5.b ET para poder pactar horas complementarias. Este tramo
                 tendrá <strong>0h complementarias permitidas</strong>, sea cual sea el % que pongas.
               </span>
             ) : (
@@ -779,7 +829,7 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
                 ) : (
                   <span>
                     {" "}
-                    ({form.pctComplementaria}% de {horasSemana}h)
+                    ({form.pctComplementaria}% de {horasSemana.toFixed(2)}h)
                   </span>
                 )}
               </>
@@ -791,12 +841,25 @@ export function TramosPanel({ empleado, onAdd, onRemove }) {
           <Plus size={14} /> Añadir tramo (cierra el anterior)
         </button>
       </div>
+
+      {pendingDelete && (
+        <ConfirmarBorradoModal
+          titulo="Borrar tramo de jornada"
+          mensaje="Esta acción no se puede deshacer. Introduce la contraseña para confirmar el borrado de este tramo."
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            onRemove(pendingDelete);
+            setPendingDelete(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 export function RegistrosPanel({ empleado, fechaCorte, onAdd, onRemove }) {
   const [form, setForm] = useState({ fecha: todayISO(), codigo: "2005", horas: "" });
+  const [pendingDelete, setPendingDelete] = useState(null);
   const anio = fechaCorte.slice(0, 4);
   const ordenados = [...empleado.registros].filter((r) => r.fecha.slice(0, 4) === anio).sort((a, b) => b.fecha.localeCompare(a.fecha));
 
@@ -815,9 +878,9 @@ export function RegistrosPanel({ empleado, fechaCorte, onAdd, onRemove }) {
               <span className={`ml-2 px-1.5 py-0.5 rounded ${CODIGOS[r.codigo]?.tipo === "extra" ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}>
                 {r.codigo} · {CODIGOS[r.codigo]?.label}
               </span>
-              <span className="ml-2 text-slate-500">{r.horas}h</span>
+              <span className="ml-2 text-slate-500">{Number(r.horas).toFixed(2)}h</span>
             </div>
-            <button onClick={() => onRemove(r.id)}>
+            <button onClick={() => setPendingDelete(r.id)}>
               <Trash2 size={13} className="text-slate-300 hover:text-rose-500" />
             </button>
           </div>
@@ -856,6 +919,18 @@ export function RegistrosPanel({ empleado, fechaCorte, onAdd, onRemove }) {
           <Info size={11} /> Se avisará si el código no corresponde al tipo de jornada de esa fecha.
         </p>
       </div>
+
+      {pendingDelete && (
+        <ConfirmarBorradoModal
+          titulo="Borrar registro de horas"
+          mensaje="Esta acción no se puede deshacer. Introduce la contraseña para confirmar el borrado de este registro."
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            onRemove(pendingDelete);
+            setPendingDelete(null);
+          }}
+        />
+      )}
     </div>
   );
 }
