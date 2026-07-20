@@ -169,3 +169,15 @@ export async function eliminarRegistro(registroId) {
   const { error } = await supabase.from("registros_horas").delete().eq("id", registroId);
   if (error) throw error;
 }
+
+// Por defecto, si un usuario no tiene fila en "perfiles" (por ejemplo, se le olvidó
+// asignarla al crearlo), se le trata como "consulta" -- el modo más restrictivo,
+// nunca al revés. Así un olvido nunca da acceso de admin por error.
+export async function obtenerRol(userId) {
+  const { data, error } = await supabase.from("perfiles").select("rol").eq("id", userId).maybeSingle();
+  if (error) {
+    console.error("No se pudo leer el perfil, se asume consulta:", error.message);
+    return "consulta";
+  }
+  return data?.rol === "admin" ? "admin" : "consulta";
+}

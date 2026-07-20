@@ -16,6 +16,7 @@ import {
   insertarRegistro,
   insertarRegistrosMasivo,
   eliminarRegistro,
+  obtenerRol,
 } from "./lib/dataStore";
 import {
   DesglosePanel,
@@ -35,6 +36,7 @@ import Login from "./Login";
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = comprobando, null = sin sesión, objeto = logueado
+  const [rol, setRol] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -42,16 +44,28 @@ export default function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (session?.user?.id) {
+      obtenerRol(session.user.id).then(setRol);
+    } else {
+      setRol(null);
+    }
+  }, [session]);
+
   if (session === undefined) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Comprobando sesión...</div>;
   }
   if (!session) {
     return <Login />;
   }
-  return <ControlHoras />;
+  if (rol === null) {
+    return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Comprobando permisos...</div>;
+  }
+  return <ControlHoras rol={rol} />;
 }
 
-function ControlHoras() {
+function ControlHoras({ rol }) {
+  const esAdmin = rol === "admin";
   const [empleados, setEmpleados] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -332,26 +346,33 @@ function ControlHoras() {
             <h1 className="text-xl font-bold tracking-tight text-slate-900">Control de horas extra y complementarias</h1>
             <p className="text-sm text-slate-500 mt-1">Bolsa acumulada por trabajador según sus tramos de jornada completa / parcial durante el año.</p>
           </div>
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
-            title="Cerrar sesión"
-          >
-            <LogOut size={14} /> Cerrar sesión
-          </button>
+          <div className="flex items-center gap-3">
+            <span className={`text-xs px-2 py-1 rounded-full ${esAdmin ? "bg-slate-900 text-white" : "bg-sky-100 text-sky-700"}`}>
+              {esAdmin ? "Administrador" : "Solo consulta"}
+            </span>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+              title="Cerrar sesión"
+            >
+              <LogOut size={14} /> Cerrar sesión
+            </button>
+          </div>
         </header>
 
         {error && <div className="mb-4 text-sm bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-4 py-2">{error}</div>}
 
         <div className="flex flex-wrap gap-3 items-center mb-6">
           <EmployeeSelector empleados={empleados} selectedId={selectedId} onSelect={setSelectedId} />
-          <button
-            onClick={() => setShowNewEmpleado(true)}
-            className="flex items-center gap-1 text-sm bg-slate-900 text-white px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors"
-          >
-            <Plus size={15} /> Nuevo trabajador
-          </button>
-          {empleado && (
+          {esAdmin && (
+            <button
+              onClick={() => setShowNewEmpleado(true)}
+              className="flex items-center gap-1 text-sm bg-slate-900 text-white px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors"
+            >
+              <Plus size={15} /> Nuevo trabajador
+            </button>
+          )}
+          {esAdmin && empleado && (
             <button
               onClick={() => setShowEditEmpleado(true)}
               className="flex items-center gap-1 text-sm text-amber-600 px-3 py-2 rounded-lg hover:bg-amber-50 transition-colors"
@@ -359,7 +380,7 @@ function ControlHoras() {
               <Pencil size={15} /> Editar trabajador
             </button>
           )}
-          {empleado && (
+          {esAdmin && empleado && (
             <button
               onClick={() => setPendingDeleteEmpleado(true)}
               className="flex items-center gap-1 text-sm text-rose-600 px-3 py-2 rounded-lg hover:bg-rose-50 transition-colors"
@@ -374,25 +395,29 @@ function ControlHoras() {
           >
             <FileSpreadsheet size={15} /> Exportar Excel
           </button>
-          <label className="flex items-center gap-1 text-sm bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
-            <Upload size={15} className="text-slate-400" />
-            {importando ? "Importando..." : "Importar Excel de horas"}
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} disabled={importando} />
-          </label>
-          <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden">
-            <label className="flex items-center gap-1 text-sm text-slate-700 px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer">
+          {esAdmin && (
+            <label className="flex items-center gap-1 text-sm bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
               <Upload size={15} className="text-slate-400" />
-              {importandoTramos ? "Importando..." : "Importar tramos"}
-              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportTramosFile} disabled={importandoTramos} />
+              {importando ? "Importando..." : "Importar Excel de horas"}
+              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} disabled={importando} />
             </label>
-            <button
-              onClick={descargarPlantillaTramos}
-              className="text-sm text-sky-600 px-3 py-2 border-l border-slate-200 hover:bg-slate-50 transition-colors"
-              title="Descargar plantilla en blanco"
-            >
-              Plantilla
-            </button>
-          </div>
+          )}
+          {esAdmin && (
+            <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden">
+              <label className="flex items-center gap-1 text-sm text-slate-700 px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer">
+                <Upload size={15} className="text-slate-400" />
+                {importandoTramos ? "Importando..." : "Importar tramos"}
+                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportTramosFile} disabled={importandoTramos} />
+              </label>
+              <button
+                onClick={descargarPlantillaTramos}
+                className="text-sm text-sky-600 px-3 py-2 border-l border-slate-200 hover:bg-slate-50 transition-colors"
+                title="Descargar plantilla en blanco"
+              >
+                Plantilla
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 ml-auto">
             <CalendarRange size={16} className="text-slate-400" />
@@ -453,8 +478,8 @@ function ControlHoras() {
           </div>
         )}
 
-        {showNewEmpleado && <NuevoEmpleadoForm onCancel={() => setShowNewEmpleado(false)} onSave={addEmpleado} />}
-        {showEditEmpleado && empleado && (
+        {esAdmin && showNewEmpleado && <NuevoEmpleadoForm onCancel={() => setShowNewEmpleado(false)} onSave={addEmpleado} />}
+        {esAdmin && showEditEmpleado && empleado && (
           <EditarEmpleadoForm empleado={empleado} onCancel={() => setShowEditEmpleado(false)} onSave={editEmpleado} />
         )}
 
@@ -483,15 +508,17 @@ function ControlHoras() {
 
             <DesglosePanel desglose={bolsa.desglose} anio={bolsa.anio} />
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <TramosPanel key={empleado.id} empleado={empleado} onAdd={(t) => addTramo(empleado.id, t)} onRemove={(id) => removeTramo(empleado.id, id)} />
-              <RegistrosPanel
-                empleado={empleado}
-                fechaCorte={fechaCorte}
-                onAdd={(r) => addRegistro(empleado.id, r)}
-                onRemove={(id) => removeRegistro(empleado.id, id)}
-              />
-            </div>
+            {esAdmin && (
+              <div className="grid md:grid-cols-2 gap-6">
+                <TramosPanel key={empleado.id} empleado={empleado} onAdd={(t) => addTramo(empleado.id, t)} onRemove={(id) => removeTramo(empleado.id, id)} />
+                <RegistrosPanel
+                  empleado={empleado}
+                  fechaCorte={fechaCorte}
+                  onAdd={(r) => addRegistro(empleado.id, r)}
+                  onRemove={(id) => removeRegistro(empleado.id, id)}
+                />
+              </div>
+            )}
           </>
         )}
       </div>
